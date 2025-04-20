@@ -47,6 +47,7 @@ const limiter = rateLimit({
   windowMs: process.env.RATE_LIMIT_WINDOW_MS || 900000, // 15 minutes
   max: process.env.RATE_LIMIT_MAX_REQUESTS || 100
 });
+
 app.use(limiter);
 
 // Body parsing middleware

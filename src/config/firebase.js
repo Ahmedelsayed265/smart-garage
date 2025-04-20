@@ -1,160 +1,102 @@
 const admin = require('firebase-admin');
 const dotenv = require('dotenv');
+const fs = require('fs');
+const path = require('path');
 
+// Load environment variables
 dotenv.config();
 
-// Service account configuration
+console.log('Initializing Firebase with environment variables');
+
+// Create service account from environment variables
 const serviceAccount = {
   type: "service_account",
-  project_id: "smart-garage-93705",
-  private_key_id: "2afa50d13d6ca502f632b103b4ee7eb671515171",
-  private_key: `-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDcNxykS0snnyST
-Hzdl76wV0ctaLBgEw/+UV+48t9v5tltmzE5sbOUX/XpjAa4uxnhOOduR1pfhIMGK
-nG5kZglUVCzv75kbvCU31hsaQDIKA96yQnixcoeNM3o5X1JG4KZBx0yywRjWtjzB
-nEVa3yNSarwmsj/3xU82sTaINHmsPutg+J1asDSgFXm21wd7vUdPf6ThYflLsnxE
-e59hhvN8+ja3CqOo6zK6KWv6ZvTk1syNsJxcy+reEdNdPeYPpkTQY1wSSJA2UvHj
-QJEuGGLSnszcD4Xm3PWUXXnQMNlqS9rgqbEFcZY9vFmOpwQhCzppqNvkymVsrkLX
-E1gDySFpAgMBAAECggEALRcPw0gzdEJur70lj7a6aqFRXP5IULl9HHfArSgMX54K
-KwtMR4Eoi3f4VktiyesTeRj5r2vcH1mgp2wOYnpOELlHlj1eAULN8Bfj5sUcOda/
-A4r+wX6s6KmQriypYR/givlu5+8H0fbwi8gen1OvHNIEAnxfArGg3Zb9jngILc83
-BGh5etkUK8W70/ImE8QL6/4WWkFy7ocUGDcQIsDtlBNfNBiW8SfMmQacTOX45wIL
-Sls4VPJlsnYC9wWAiWYj4IytIiercXhP1vGUEErOMEI9+pfaICG/EauD9zeekGbv
-LqlJ3TGbZFH8mRv36yUBjDihvdyodlV25TPWT25BLQKBgQD1K39gyAXHcWd3APrq
-VWyV9yWcOJRdtyes1thESZ+plMIY/O63pDA+mmE4V05Xupjr+6LH4GvQVFmKZxd0
-XF729h3n/pcWpdPLOiLfn1RqtZUDFYHAAIShzSXl7FlGMthbbWzWXHH1VfYXbxtm
-FLo2JUBXTfUJ2Po5yauONONx+wKBgQDl8Wo+b7SJg+GfZkAKflrsmU9mr3vqJDu0
-EM3pL4BDpk7BdanH7cj68CkqgiTsNAKnuzG9XF5f2VXlA6Xoq0WtYRS3diy5A2ea
-g1DNR5cSIkHaKo+XPJi1sdbXz403JgYiiB5W3TRY7XisBStozQTdjgZO25SyuQoI
-M0KYvGaA6wKBgCm/tnkslo9X6F6DdDbjRRJke6sWl209+yubikhWoTGne0X2DFCJ
-TQ3cDCIj+9tEkzXcK+QNe06Gjpja5UuTTziOwJj46ZGZu28n/zhFUYK6WR2lU+r2
-K5/B52o3zRv/HIi1IYt/QoicksN60BeZ//uobERxqgB7SmD8zpHwv6pxAoGAfqZe
-z271cHy8S/Cku2LnL8QtkLB9PvSgEcjjsVlhe2FhpXrqfd1Bwr1+3xP5xEPNZpdb
-iSIUNRTfE5nTyvhzE1ESeQ5VCb6PVPKZEcgptGo7/S9OEY3lysXeQNXnwQVngaOZ
-mlySVZzOx2i9hSbPVDzCyrJ1D4+NsACT4M58YusCgYEAjfbRtq+cTVzcO5x4DW1M
-CNmSZYOESF+MpkzC+D30X1X5xl/cCUy6/+Hccz8lMJOX9iHhN4rM47Jwwtd6uK1K
-HrW+aDxQGRxljWPnfuuz94VjgnNvbyLLSj2zZeTqobT9MtT2bFWQABhLGwHQFIAF
-WxS0RP3HCHBpPEYqSjJoER0=
------END PRIVATE KEY-----`,
-  client_email: "firebase-adminsdk-fbsvc@smart-garage-93705.iam.gserviceaccount.com",
-  client_id: "103948774396943647310",
+  project_id: process.env.FIREBASE_PROJECT_ID,
+  private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  client_email: process.env.FIREBASE_CLIENT_EMAIL,
   auth_uri: "https://accounts.google.com/o/oauth2/auth",
   token_uri: "https://oauth2.googleapis.com/token",
   auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40smart-garage-93705.iam.gserviceaccount.com",
-  universe_domain: "googleapis.com"
+  client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(process.env.FIREBASE_CLIENT_EMAIL)}`
 };
 
-console.log('Initializing Firebase with:');
+// Log configuration for debugging
 console.log('Project ID:', serviceAccount.project_id);
+console.log('Database URL:', process.env.FIREBASE_DATABASE_URL);
 
 // Initialize Firebase Admin SDK with error handling
-let app;
+let app, rtdb;
 try {
-  app = admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://smart-garage-93705-default-rtdb.asia-southeast1.firebasedatabase.app"
-  });
-  console.log('Firebase Admin SDK initialized successfully');
-} catch (error) {
-  console.error('Failed to initialize Firebase Admin SDK:', error);
-  console.error('Error details:', {
-    code: error.code,
-    message: error.message,
-    stack: error.stack
-  });
-  process.exit(1);
-}
-
-// Initialize Firestore and Realtime Database with error handling
-let db, rtdb, storage;
-try {
-  db = admin.firestore();
+  // Check if app is already initialized
+  if (admin.apps.length === 0) {
+    app = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: process.env.FIREBASE_DATABASE_URL
+    });
+    console.log('Firebase Admin SDK initialized successfully');
+  } else {
+    app = admin.app();
+    console.log('Using existing Firebase Admin SDK instance');
+  }
+  
+  // Initialize Realtime Database
   rtdb = admin.database();
-  storage = admin.storage();
-  console.log('Firebase services initialized successfully');
+  console.log('Firebase Realtime Database initialized successfully');
 } catch (error) {
-  console.error('Failed to initialize Firebase services:', error);
-  console.error('Error details:', {
-    code: error.code,
-    message: error.message,
-    stack: error.stack
-  });
+  console.error('Failed to initialize Firebase:', error);
   process.exit(1);
 }
 
-// Create collections and references
+// Create references
 const collections = {
-  garageImages: db.collection('garage_images'),
   garageStatus: rtdb.ref('garage_status'),
   parkingSpots: rtdb.ref('parking_spots')
 };
 
-// Test database connection
+// Test database connection with improved error handling
 const testDatabaseConnection = async () => {
-  try {
-    console.log('Testing database connection...');
-    const connectedRef = rtdb.ref('.info/connected');
-    connectedRef.on('value', (snap) => {
-      if (snap.val() === false) {
-        console.error('Database connection failed');
-      } else {
-        console.log('Database connection successful');
-      }
-    });
-
-    // Test write operation
-    const testRef = rtdb.ref('test');
-    await testRef.set({ timestamp: new Date().toISOString() });
-    console.log('Write test successful');
-    
-    // Clean up test data
-    await testRef.remove();
-  } catch (error) {
-    console.error('Database connection test failed:', error);
-    console.error('Error details:', {
-      code: error.code,
-      message: error.message,
-      stack: error.stack
-    });
-    process.exit(1);
-  }
-};
-
-// Initialize real-time listeners
-const setupRealtimeListeners = () => {
-  try {
-    // Listen for changes in parking spots
-    collections.parkingSpots.on('value', (snapshot) => {
-      console.log('Parking spots updated:', snapshot.val());
-    }, (error) => {
-      console.error('Error listening to parking spots:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        stack: error.stack
+  return new Promise((resolve, reject) => {
+    try {
+      console.log('Testing database connection...');
+      
+      // Create a test reference
+      const testRef = rtdb.ref('.info/connected');
+      
+      // Set up connection listener
+      const connectionListener = testRef.on('value', (snapshot) => {
+        if (snapshot.val() === true) {
+          console.log('✅ Database connection successful');
+          testRef.off('value', connectionListener);
+          resolve(true);
+        } else {
+          console.log('⚠️ Not connected to database yet, waiting...');
+        }
+      }, (error) => {
+        console.error('❌ Error in connection listener:', error);
+        testRef.off('value', connectionListener);
+        reject(error);
       });
-    });
-
-    // Listen for changes in garage status
-    collections.garageStatus.on('value', (snapshot) => {
-      console.log('Garage status updated:', snapshot.val());
-    }, (error) => {
-      console.error('Error listening to garage status:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        stack: error.stack
-      });
-    });
-  } catch (error) {
-    console.error('Failed to setup real-time listeners:', error);
-    console.error('Error details:', {
-      code: error.code,
-      message: error.message,
-      stack: error.stack
-    });
-  }
+      
+      // Set a timeout
+      setTimeout(() => {
+        testRef.off('value', connectionListener);
+        console.error('❌ Database connection test timed out');
+        
+        // Try to verify database URL
+        console.log('Verifying database URL format...');
+        const urlPattern = /^https:\/\/[a-z0-9-]+\.firebaseio\.com\/?$/;
+        if (!urlPattern.test(process.env.FIREBASE_DATABASE_URL)) {
+          console.error('❌ Database URL format appears incorrect. Should be: https://PROJECT-ID.firebaseio.com');
+        }
+        
+        reject(new Error('Connection test timed out after 15 seconds'));
+      }, 15000);
+      
+    } catch (error) {
+      console.error('❌ Error in connection test setup:', error);
+      reject(error);
+    }
+  });
 };
 
 // Initialize database structure
@@ -162,46 +104,103 @@ const initializeDatabase = async () => {
   try {
     console.log('Initializing database structure...');
     
+    // Perform a simple write test first
+    const testRef = rtdb.ref('connection_test');
+    await testRef.set({
+      timestamp: new Date().toISOString(),
+      status: 'testing'
+    });
+    console.log('✅ Write test successful');
+    await testRef.remove();
+    
     // Check if garage_status exists
     const statusSnapshot = await collections.garageStatus.once('value');
     if (!statusSnapshot.exists()) {
       await collections.garageStatus.set({
-        totalSpots: 0,
+        totalSpots: 10,  // Default to 10 spots
         occupiedSpots: 0,
-        availableSpots: 0,
+        availableSpots: 10,
         lastUpdated: new Date().toISOString()
       });
-      console.log('Created garage_status');
+      console.log('✅ Created garage_status');
+    } else {
+      console.log('✅ garage_status already exists');
     }
 
     // Check if parking_spots exists
     const spotsSnapshot = await collections.parkingSpots.once('value');
     if (!spotsSnapshot.exists()) {
-      await collections.parkingSpots.set({});
-      console.log('Created parking_spots');
+      // Create default parking spots
+      const defaultSpots = {};
+      for (let i = 1; i <= 10; i++) {
+        defaultSpots[`spot_${i}`] = {
+          id: `spot_${i}`,
+          name: `Parking Spot ${i}`,
+          occupied: false,
+          lastUpdated: new Date().toISOString()
+        };
+      }
+      await collections.parkingSpots.set(defaultSpots);
+      console.log('✅ Created parking_spots with default values');
+    } else {
+      console.log('✅ parking_spots already exists');
     }
 
-    console.log('Database initialization completed successfully');
+    console.log('✅ Database initialization completed successfully');
+    return true;
   } catch (error) {
-    console.error('Failed to initialize database:', error);
-    console.error('Error details:', {
-      code: error.code,
-      message: error.message,
-      stack: error.stack
-    });
-    throw error;
+    console.error('❌ Failed to initialize database:', error);
+    return false;
   }
 };
 
-// Run connection test
-testDatabaseConnection();
+// Setup real-time listeners for database changes
+const setupRealtimeListeners = () => {
+  try {
+    console.log('Setting up real-time database listeners...');
+    
+    // Listen for changes in garage status
+    collections.garageStatus.on('value', (snapshot) => {
+      const status = snapshot.val();
+      console.log('Garage status updated:', status);
+    }, (error) => {
+      console.error('Error listening to garage status:', error);
+    });
+    
+    // Listen for changes in parking spots
+    collections.parkingSpots.on('value', (snapshot) => {
+      const spots = snapshot.val();
+      console.log('Parking spots updated:', spots);
+    }, (error) => {
+      console.error('Error listening to parking spots:', error);
+    });
+    
+    console.log('Real-time listeners set up successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to set up real-time listeners:', error);
+    return false;
+  }
+};
+
+// Export a function to initialize everything
+const initialize = async () => {
+  try {
+    // Test connection first
+    await testDatabaseConnection();
+    // Then initialize database
+    await initializeDatabase();
+    return true;
+  } catch (error) {
+    console.error('❌ Firebase initialization failed:', error);
+    return false;
+  }
+};
 
 module.exports = {
   admin,
-  db,
   rtdb,
-  storage,
   collections,
-  setupRealtimeListeners,
-  initializeDatabase
-}; 
+  initializeDatabase,
+  setupRealtimeListeners  // Export the new function
+};

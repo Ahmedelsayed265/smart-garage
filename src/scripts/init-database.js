@@ -34,6 +34,7 @@ async function initializeDatabase() {
 
     // Initialize garage status
     console.log("\n2. Setting up garage status...");
+    
     const garageStatus = {
       totalSpots: 3,
       availableSpots: 3,
